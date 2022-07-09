@@ -1,7 +1,7 @@
 # create a program knows the last time i "Downloaded" a manga to my kindle and it keeps track of the last of that chapter
 # it will create new .Mobi Files for every chapter from the last kindle download to newest chapter.
 # I need to implement a button or command to "export" the .mobi files and
-# then mark thoose chapters as last downloaded to my kindle
+# then mark those chapters as last downloaded to my kindle
 
 # HOW TO DO
 
@@ -13,7 +13,7 @@
 #   - Copy relevant files to a new directory - Done
 #       - some how need to copy only relevant files and all in-between, i suspect this will be hardest part - Done
 #   - Convert files - Done
-#   - Copy .mobi files back (may need to rename or add date or list chapters!!! ) - !! Done-ish, should add dates or numbers to the .mobi files !!
+#   - Copy .mobi files back (may need to rename or add date or list chapters!!! ) - !! Done
 #   - delete copied data - Done
 #
 # Create a method to mark files for export - Done
@@ -34,10 +34,20 @@
 # Create a way to save settings to a file such as an ini file
 #   - save the manga folder file path
 #   - save the destination folder file path
-#   - save the last exported chapter
-#   - save the newest chapter
+#   - save the last exported chapter for each manga
+#   - save the newest chapter for each manga
 #   - save the options of single thread or multi threaded
 #   - save whatever else is needed
+#
+# Create a way to load settings from a file such as an ini file
+#   - load the manga folder file path
+#   - load the destination folder file path
+#   - somehow need to initialize the manga class with saved values
+#   - load the last exported chapter for each manga
+#   - load the newest chapter for each manga
+#   - load the options of single thread or multi threaded
+#   - load whatever else is needed
+#
 #
 #
 # NICE TO HAVES
@@ -65,6 +75,7 @@ from tkinter import filedialog
 import platform
 import shutil
 import checksumdir
+import configparser
 
 #File Paths for Debugging purposes
 Fpath = '/Users/nicholasharman/Documents/Manga_to_try/To_Convert'
@@ -218,6 +229,30 @@ def rename_directory(source, destination):
     os.rename(source, destination)
     print("Renamed " + source + " to " + destination)
 
+# try and read an ini file to get settings such as file paths last exported, etc., if it doesn't exist skip
+def read_ini_file(file):
+    try:
+        config = configparser.ConfigParser()
+        config.read(file)
+        return config
+    except:
+        print("No ini file found")
+        return None
+
+# first check if ini file exists, if not create it and then write an ini file to save settings such as file paths last exported, etc
+def write_ini_file(file, config):
+    with open(file, 'w') as configfile:
+        config.write(configfile)
+    print("Wrote config file")
+
+#create config file if it does not exist
+def create_config_file(file):
+    config = configparser.ConfigParser()
+    config.add_section('Settings')
+    config.set('Settings', 'last_exported', '0')
+    with open(file, 'w') as configfile:
+        config.write(configfile)
+    print("Created config file")
 
 
 #I need to turn the keys in a dictionary into a class with the key as the object name and values as the chapter names
@@ -260,6 +295,8 @@ class Manga(object):
         self.last_exported_chapter_date = self.last_exported_date
         self.last_exported_chapter_name = self.last_exported
         #return self.last_exported
+
+
 
 
 if __name__ == '__main__':
