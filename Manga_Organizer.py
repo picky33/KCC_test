@@ -43,6 +43,9 @@
 #   - load the manga folder file path
 #   - load the destination folder file path
 #   - somehow need to initialize the manga class with saved values
+#      - it needs to check if the manga folder still exists
+#      - if it does, it needs to parse through the settings and initialize the manga class
+#      - if it doesn't, it needs to delete the manga class and  maybe alert the user
 #   - load the last exported chapter for each manga
 #   - load the newest chapter for each manga
 #   - load the options of single thread or multi threaded
@@ -76,6 +79,7 @@ import platform
 import shutil
 import checksumdir
 import configparser
+import dill
 
 #File Paths for Debugging purposes
 Fpath = '/Users/nicholasharman/Documents/Manga_to_try/To_Convert'
@@ -254,6 +258,23 @@ def create_config_file(file):
         config.write(configfile)
     print("Created config file")
 
+def manga_to_object(subfolders):
+    # converts my dictionary of manga titles and chapters into individual manga objects
+    for key, val in subfolders.items():
+        title = replace_spaces_with_underscores(key)
+        # check to see if manga already exists in the registry
+        if title in [manga.name for manga in Manga._registry]:
+            print("Manga already exists")
+            # This will prevent a manga from being overwritten, but this doesnt solve the importing problem
+            # parse the manga object and compare last_exported to the one in the ini file
+            # if it is newer, then update the ini file with the new last_exported
+            # if it is older, then do nothing
+            # if it is the same, then do nothing
+
+    else:
+        exec(title + " = Manga(subfolders ,key, Fpath)")
+
+
 
 #I need to turn the keys in a dictionary into a class with the key as the object name and values as the chapter names
 #I need to make a class for this
@@ -302,19 +323,22 @@ class Manga(object):
 if __name__ == '__main__':
     print("Starting")
 
-    #get the path to the manga - Turned off for debug purposes
+    try:
+        dill.load_session('./Manga.pkl')
+    except:
+        print("No previous session found")
+    #### get the path to the manga - Turned off for debug purposes ####
     #Fpath= get_manga_path()
     #F_Temp_path = Fpath + "/Temp"
 
+    #parses directory for manga based on folder names
     subfolders = parse_Manga_Names(Fpath)
 
     print("Done")
 
     #converts my dictionary of manga titles and chapters into individual manga objects
-    for key, val in subfolders.items():
-        title = replace_spaces_with_underscores(key)
-        exec(title + " = Manga(subfolders ,key, Fpath)")
-
+    manga_to_object(subfolders)
+    print("Done")
 
     # print('Done')
     # export_unexported_chapters()
@@ -325,3 +349,7 @@ if __name__ == '__main__':
     # print('Done')
     # delete_temp_directory(F_Temp_path)
     # print('Done')
+
+    # backup's all variables in workspace to a file
+    dill.dump_session('./Manga.pkl')
+    print('Done')
