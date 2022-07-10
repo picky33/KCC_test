@@ -170,9 +170,41 @@ def parse_Manga_Names(Fpath):
 def get_unexported_chapters(self):
     unexported_chapters = []
     for chapter in self.chapters:
-        if chapter not in self.last_exported:
+        if chapter not in self.last_exported: #how to i get around the first chapter problem? RN the first chapter is always skipped - i added a boolean but thats a stop gap
+            unexported_chapters.append(chapter)
+        elif chapter not in self.last_exported and self.first_chapter_exported == False:
+            unexported_chapters.append(chapter)
+
+    return unexported_chapters
+
+def get_only_new_unexported_chapters(M):
+    unexported_chapters = []
+    for chapter in M.chapters:
+        if (chapter not in M.exported_chapters) and (M.chapters.index(chapter) > M.last_exported_index):
+            unexported_chapters.append(chapter)
+        elif M.last_exported == M.chapters[0]:
             unexported_chapters.append(chapter)
     return unexported_chapters
+
+def export_new_unexported_chapters():
+    for M in Manga._registry:
+        print (M.name)
+        Unexported = M.unexported_only_new_chapters
+        first = Unexported[0]
+        last = Unexported[-1]
+        #copy all chapters from last exported chapter to newest chapter to the manga folder
+        for chapter in M.chapters:
+            if chapter in (Unexported):
+                copy_directory(Fpath + "/" + M.name + "/" + str(chapter), F_Temp_path + "/" + M.name + "/" + str(chapter))
+                M.set_last_export()
+                M.exported_chapters.append(chapter)
+                print("Copied " + str(chapter) + " to " + M.name)
+                if chapter == M.chapters[0]:
+                    M.first_chapter_exported = True
+            else:
+                print("Chapter " + str(chapter) + " already exists")
+        rename_directory(F_Temp_path + "/" + M.name, F_Temp_path + "/" + M.name + " " + first + " - " + last)
+
 
 def export_unexported_chapters():
     for M in Manga._registry:
@@ -185,7 +217,10 @@ def export_unexported_chapters():
             if chapter in (Unexported):
                 copy_directory(Fpath + "/" + M.name + "/" + str(chapter), F_Temp_path + "/" + M.name + "/" + str(chapter))
                 M.set_last_export()
+                M.exported_chapters.append(chapter)
                 print("Copied " + str(chapter) + " to " + M.name)
+                if chapter == M.chapters[0]:
+                    M.first_chapter_exported = True
             else:
                 print("Chapter " + str(chapter) + " already exists")
         rename_directory(F_Temp_path + "/" + M.name, F_Temp_path + "/" + M.name + " " + first + " - " + last)
@@ -202,6 +237,7 @@ def export_all_chapters():
                 print("Copied " + str(chapter) + " to " + M.name)
             else:
                 print("Chapter " + str(chapter) + " already exists")
+        M.first_chapter_exported = True
 
 def convert_manga_to_ebook(F_Temp_path):
     #need to make a multi-threaded function that will convert each manga to an ebook
@@ -258,22 +294,14 @@ def create_config_file(file):
         config.write(configfile)
     print("Created config file")
 
-def manga_to_object(subfolders):
-    # converts my dictionary of manga titles and chapters into individual manga objects
-    for key, val in subfolders.items():
-        title = replace_spaces_with_underscores(key)
-        # check to see if manga already exists in the registry
-        if title in [manga.name for manga in Manga._registry]:
-            print("Manga already exists")
-            # This will prevent a manga from being overwritten, but this doesnt solve the importing problem
-            # parse the manga object and compare last_exported to the one in the ini file
-            # if it is newer, then update the ini file with the new last_exported
-            # if it is older, then do nothing
-            # if it is the same, then do nothing
 
+#if title is an instance of Manga, then add it to the registry
+def add_manga_to_registry(title):
+    if isinstance(title.__name__, Manga):
+        Manga._registry.append(title)
+        print("Added " + title.name + " to registry")
     else:
-        exec(title + " = Manga(subfolders ,key, Fpath)")
-
+        print("Not a manga")
 
 
 #I need to turn the keys in a dictionary into a class with the key as the object name and values as the chapter names
@@ -288,10 +316,11 @@ class Manga(object):
         self.chapters = my_dict[key]
         self.Filepath = Fpath + "/" +self.name
         #self.last_exported = self.chapters[0]
-        self.last_exported = ""
+        self.last_exported = self.chapters[0]
         self.newest = self.chapters[-1]
         self.last_downloaded = self.chapters[-1]
-        self.last_converted = self.chapters[-1]
+        self.last_converted = self.chapters[0]
+        self.last_exported_index = self.chapters.index(self.last_exported)
         self.last_exported_date = get_date_modified(self.Filepath + "/" + self.last_exported)
         self.newest_date = get_date_modified(self.Filepath + "/" + self.newest)
         self.last_downloaded_date = get_date_modified(self.Filepath + "/" + self.last_downloaded)
@@ -307,6 +336,9 @@ class Manga(object):
         self.last_exported_chapter_name = self.last_exported
         self.newest_chapter_name = self.newest
         self.unexported_chapters = get_unexported_chapters(self)
+        self.exported_chapters = []
+        self.first_chapter_exported = False
+        self.unexported_only_new_chapters = get_only_new_unexported_chapters(self)
 
 
     def set_last_export(self):
@@ -322,7 +354,7 @@ class Manga(object):
 
 if __name__ == '__main__':
     print("Starting")
-
+    aaa=[];
     try:
         dill.load_session('./Manga.pkl')
     except:
@@ -330,14 +362,34 @@ if __name__ == '__main__':
     #### get the path to the manga - Turned off for debug purposes ####
     #Fpath= get_manga_path()
     #F_Temp_path = Fpath + "/Temp"
+    print("Done")
+    # if title is an instance of Manga, then it is already in the registry
+    if not aaa == []:
+        Manga._registry = aaa
+    else:
+        print("No previous session found")
+
 
     #parses directory for manga based on folder names
     subfolders = parse_Manga_Names(Fpath)
 
-    print("Done")
 
     #converts my dictionary of manga titles and chapters into individual manga objects
-    manga_to_object(subfolders)
+    #manga_to_object(subfolders)
+    for key, val in subfolders.items():
+        title = replace_spaces_with_underscores(key)
+        # check to see if object with the same name as title already exists
+        if key in [manga.name for manga in Manga._registry]:
+            print(title + " already exists")
+            #Manga._registry.append(title)
+            # This will prevent a manga from being overwritten, but this doesn't solve the importing problem
+
+            # if it is newer, then update the ini file with the new last_exported - need to try this
+            # if it is older, then do nothing
+            # if it is the same, then do nothing
+        else:
+            exec(title + " = Manga(subfolders ,key, Fpath)")
+
     print("Done")
 
     # print('Done')
@@ -349,7 +401,8 @@ if __name__ == '__main__':
     # print('Done')
     # delete_temp_directory(F_Temp_path)
     # print('Done')
-
+    #   Lequios.last_exported = Lequios.chapters[-2]
     # backup's all variables in workspace to a file
+    aaa = Manga._registry
     dill.dump_session('./Manga.pkl')
     print('Done')
